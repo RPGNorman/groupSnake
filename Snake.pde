@@ -5,6 +5,8 @@ class Snake {
   int lifetime = 0;  //amount of time the snake has been alive
   int xVel, yVel;
   int foodItterate = 0;  //itterator to run through the foodlist (used for replay)
+  int food2Itterate = 0;
+  int obstacleItterate = 0;
   int currDir = 0;
   
   float myHigh = 0;
@@ -27,8 +29,12 @@ class Snake {
   
   ArrayList<PVector> body;  //snakes body
   ArrayList<Food> foodList;  //list of food positions (used to replay the best snake)
+  ArrayList<Food> food2List;
+  ArrayList<Obstacle> obstacleList;
   
   Food food;
+  Food food2;
+  Obstacle obstacle;
   NeuralNet brain;
   
   Snake() {
@@ -49,11 +55,21 @@ class Snake {
         foodList = new ArrayList<Food>();
         foodList.add(food.clone());
         brain = new NeuralNet(24,hidden_nodes,4,layers);
+        if (addObstacle) {
+          obstacle = new Obstacle();
+          obstacleList = new ArrayList<Obstacle>();
+          obstacleList.add(obstacle.clone());
+        }
+        if (addFood) {
+          food2 = new Food();
+          food2List = new ArrayList<Food>();
+          food2List.add(food.clone());
+        }
       }
     }
   }
   
-  Snake(ArrayList<Food> foods) {  //this constructor passes in a list of food positions so that a replay can replay the best snake
+  Snake(ArrayList<Food> foods, ArrayList<Food> foods2, ArrayList<Obstacle> obstacles) {  //this constructor passes in a list of food positions so that a replay can replay the best snake
      replay = true;
      vision = new float[24];
      decision = new float[4];
@@ -64,6 +80,23 @@ class Snake {
      }
      food = foodList.get(foodItterate);
      foodItterate++;
+     if (addFood) {
+      food2List = new ArrayList<Food>(foods2.size());
+      for (Food f: foods2) {
+        food2List.add(f.clone());
+      }
+      food2 = food2List.get(food2Itterate);
+      food2Itterate++;
+     }
+
+     if(addObstacle){
+      obstacleList = new ArrayList<Obstacle>(obstacles.size());
+        for(Obstacle o: obstacles) {  //clone all the food positions in the foodlist
+          obstacleList.add(o.clone());
+        }
+      obstacle = obstacleList.get(obstacleItterate);
+      obstacleItterate++;
+    }
      head = new PVector(800,height/2);
      body.add(new PVector(800,(height/2)+SIZE));
      body.add(new PVector(800,(height/2)+(2*SIZE)));
@@ -80,12 +113,30 @@ class Snake {
   }
   
   boolean foodCollide(float x, float y) {  //check if a position collides with the food
-     if(x == food.pos.x && y == food.pos.y) {
+     if (addFood) {
+       if(x == food.pos.x && y == food.pos.y) {
+           return true;
+       } else if (x == food2.pos.x && y == food2.pos.y) {
          return true;
+       }
+         return false;
+     } else {
+       if (x == food.pos.x && y == food.pos.y) {
+         return true;
+       }
      }
      return false;
   }
   
+  boolean obstacleCollide(float x, float y) {  //check if a position collides with an obstacle
+  if(addObstacle){
+     if(x == obstacle.pos.x && y == obstacle.pos.y) {
+         return true;
+     }
+   }
+     return false;
+  }
+
   boolean wallCollide(float x, float y) {  //check if a position collides with the wall
      if(x >= width-(SIZE) || x < 400 + SIZE || y >= height-(SIZE) || y < SIZE) {
        return true;
@@ -95,6 +146,15 @@ class Snake {
   
   void show() {  //show the snake
      food.show();
+
+     if (addObstacle) {
+      obstacle.show();
+     }
+
+     if (addFood) {
+      food2.show();
+     }
+
      fill(255);
      stroke(0);
      for(int i = 0; i < body.size(); i++) {
@@ -124,6 +184,8 @@ class Snake {
          dead = true;
        } else if(lifeLeft <= 0 && !humanPlaying && !isGreedy) {
           dead = true;
+       } else if (addObstacle && obstacleCollide(head.x, head.y)) {
+        dead = true;
        }
      }
   }
@@ -152,12 +214,29 @@ class Snake {
       }
       if(!humanPlaying && !isGreedy && !isHamiltonian) {
         foodList.add(food);
+        if (addFood) {
+        food2 = new Food();
+        while (bodyCollide(food2.pos.x, food2.pos.y) || food2 == food) {
+          food2 = new Food();
+        }
       }
     } else {  //if the snake is a replay, then we dont want to create new random foods, we want to see the positions the best snake had to collect
-      food = foodList.get(foodItterate);
-      foodItterate++;
+      if (!isHamiltonian && foodItterate < foodList.size()) {
+        food = foodList.get(foodItterate);
+        foodItterate++;
+      }
+      if (addFood && food2Itterate < food2List.size()) {
+        food2 = food2List.get(food2Itterate);
+        food2Itterate++;
+      }
+      if(addObstacle && obstacleItterate < obstacleList.size()){
+      obstacle = obstacleList.get(obstacleItterate);
+      obstacleItterate++;
+      }
+    }
     }
   }
+  
   
   void shiftBody() {  //shift the body to follow the head
     float tempx = head.x;
@@ -177,7 +256,7 @@ class Snake {
   }
   
   Snake cloneForReplay() {  //clone a version of the snake that will be used for a replay
-     Snake clone = new Snake(foodList);
+     Snake clone = new Snake(foodList, food2List, obstacleList);
      clone.brain = brain.clone();
      return clone;
   }
@@ -250,6 +329,7 @@ class Snake {
     float distance = 0;
     boolean foodFound = false;
     boolean bodyFound = false;
+    boolean obstacleFound = false;
     pos.add(direction);
     distance +=1;
     while (!wallCollide(pos.x,pos.y)) {
@@ -261,6 +341,9 @@ class Snake {
          bodyFound = true;
          look[1] = 1;
       }
+      if (addObstacle && !obstacleFound && obstacleCollide(pos.x, pos.y)) {
+        obstacleFound = true;
+      }
       if(replay && seeVision) {
         stroke(0,255,0);
         point(pos.x,pos.y);
@@ -269,6 +352,12 @@ class Snake {
            fill(255,255,51);
            ellipseMode(CENTER);
            ellipse(pos.x,pos.y,5,5); 
+        }
+        if (obstacleFound) {
+          noStroke();
+          fill(255,255,51);
+          ellipseMode(CENTER);
+          ellipse(pos.x,pos.y,5,5); 
         }
         if(bodyFound) {
            noStroke();
@@ -320,25 +409,6 @@ class Snake {
     if(body.size() > 0){
     System.out.println(body.get(0).y/20);
     }
-    /*for(int i=0; i <= 3; i++){
-      if(vision[i*6+1] >= .4) {
-        if(up&&i==0){
-        bodyCheck = true;
-        break;
-        }
-        if(right&&i==1){
-        bodyCheck = true;
-        }
-        if(down&&i==2){
-        moveRight();
-        bodyCheck = true;
-        }
-        if(left&&i==3){
-        moveDown();
-        bodyCheck = true;
-        }
-      }
-    }*/
     myHigh = 0;
     for(int i=0; i <= 3; i++){
       if(vision[i*6+2] >= 1) {
@@ -359,40 +429,6 @@ class Snake {
       }
     }
     
-      /*for(int i=0; i <= 3; i++){
-        
-        if(vision[i*6] == 1) {
-           if (i==0 && !right){
-             moveLeft();
-           }
-           else if (i==0 && right){
-             moveUp();
-           }
-           
-           else if (i==1 && !down){
-             moveUp();
-           }
-           else if (i==1 && down){
-             moveRight();
-           }
-           
-           else if (i==2 && !left){
-             moveRight();
-           }
-           else if (i==2 && left){
-             moveDown();
-           }
-           
-           else if (i==3 && !up){ 
-             moveDown();
-           }
-           else if (i==3 && up){
-             moveLeft();
-           }
-           foodVision = true;
-           break;
-        }
-      }*/
       if(!foodVision){
          System.out.println(currDir);
          if (currDir==0){

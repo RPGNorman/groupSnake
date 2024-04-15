@@ -10,6 +10,10 @@ class Population {
    float bestFitness = 0;
    float fitnessSum = 0;
    
+    
+   
+   
+   
    Population(int size) {
       snakes = new Snake[size]; 
       for(int i = 0; i < snakes.length; i++) {
@@ -99,6 +103,8 @@ class Population {
       
       setBestSnake();
       calculateFitnessSum();
+      if(adjustMutation == true)
+        adjustMutationRate();
       
       newSnakes[0] = bestSnake.clone();  //add the best snake of the prior generation into the new generation
       for(int i = 1; i < snakes.length; i++) {
@@ -129,4 +135,29 @@ class Population {
          fitnessSum += snakes[i].fitness; 
       }
    }
+   
+   void adjustMutationRate() {
+    // Track performance trend over multiple generations
+    if (gen > 5 && gen <= 25) { // Start adjusting after a few generations
+        float performanceChange = evolution.get(gen - 1) - evolution.get(gen - 6); // Calculate performance change over 5 generations
+        if (performanceChange >= 5 && mutationRate > 0.02) {
+            // Performance improving, decrease mutation rate slightly
+            mutationRate *= 0.9; // Example adjustment factor
+        } else if (performanceChange < 1 && mutationRate < 0.1) {
+            // Performance declining, increase mutation rate
+            mutationRate *= 1.15; // Example adjustment factor
+        }
+    }
+    else if(gen > 30){
+      float performanceChange = evolution.get(gen - 1) - evolution.get(gen - 6); // Calculate performance change over 5 generations
+      if (performanceChange >= 3 && mutationRate > 0.02) {
+            // Performance improving, decrease mutation rate slightly
+            mutationRate *= 0.5; // Example adjustment factor
+        } else if (performanceChange < 1 && mutationRate < 0.1) {
+            // Performance declining, increase mutation rate
+            mutationRate *= 1.5; // Example adjustment factor
+        }
+      
+}
+}
 }

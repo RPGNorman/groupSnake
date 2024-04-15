@@ -14,6 +14,9 @@ boolean seeVision = true;  //see the snakes vision
 boolean modelLoaded = false;
 boolean isGreedy = false;
 boolean isHamiltonian = true;
+boolean addObstacle = false;
+boolean addFood = false;
+boolean adjustMutation = false;
 
 PFont font;
 
