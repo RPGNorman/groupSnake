@@ -136,7 +136,7 @@ class Hamiltonian{
           return move>head;
         }
         else if(head < tail){
-          return move>head&&move<tail; //need to make -1
+          return move>head&&move<tail-1; //need to make -1
         }
         return false;
    }
